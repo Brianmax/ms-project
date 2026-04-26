@@ -21,6 +21,44 @@ Los servicios de negocio comparten:
 
 Los módulos de infraestructura compilan y arrancan, pero los servicios de negocio aún no se registran en Eureka, no leen del Config Server y no pasan por el gateway.
 
+## Arquitectura
+
+Diagrama de cómo se conectan los dos servicios de negocio hoy:
+
+```text
+                  +-------------------------------+
+                  |         Cliente HTTP          |
+                  |        (curl / Postman)       |
+                  +----+---------------------+----+
+                       |                     |
+          POST/GET     |                     |     POST/GET
+       /api/products   |                     |     /api/orders
+                       v                     v
+         +----------------------+   +----------------------+
+         | product-service 8081 |<--| order-service  8082  |
+         |  ProductController   |   |  OrderController     |
+         |  ProductService      |   |  OrderService        |
+         |                      |   |  ProductCatalogClient|
+         +----------+-----------+   +----------+-----------+
+                    |                          |
+                    v                          v
+         +----------------------+   +----------------------+
+         |  postgres-product    |   |   postgres-order     |
+         |  5432  product_db    |   |   5433  order_db     |
+         +----------------------+   +----------------------+
+
+  Llamada interna:
+    order-service --[OpenFeign GET /api/products/{id}]--> product-service
+    Si product-service falla, order-service devuelve el snapshot local
+    guardado en order_db y marca product.source = FALLBACK.
+```
+
+Flujo principal:
+
+- Al **crear** un pedido (`POST /api/orders`), `order-service` resuelve el producto llamando a `product-service` vía OpenFeign, calcula el `totalPrice` y guarda en `order_db` un snapshot del producto (nombre, SKU y precio unitario en el momento de la compra).
+- Al **leer** un pedido (`GET /api/orders/{id}`), `order-service` intenta reconsultar el producto. Si `product-service` responde, el campo `product.source` es `LIVE`; si la llamada falla, se devuelve el snapshot guardado en `order_db` y `product.source` pasa a `FALLBACK`.
+- Cada servicio es dueño de su propia base de datos. No hay acceso directo entre `order-service` y `product_db`; toda la información de productos viaja por HTTP.
+
 ## Estructura del proyecto
 
 ```text

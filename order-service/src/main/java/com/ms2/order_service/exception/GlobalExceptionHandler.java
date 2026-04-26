@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +34,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProductUnavailable(ProductUnavailableException exception, HttpServletRequest request) {
         log.warn("event=handled_exception type=ProductUnavailableException path={} message={}", request.getRequestURI(), exception.getMessage());
         return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, "PRODUCT_SERVICE_UNAVAILABLE", exception.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        String parameter = exception.getName();
+        String requiredType = exception.getRequiredType() != null ? exception.getRequiredType().getSimpleName() : "expected type";
+        String message = String.format("%s must be a valid %s", parameter, requiredType);
+
+        log.warn("event=handled_exception type=MethodArgumentTypeMismatchException path={} parameter={} value={}",
+                request.getRequestURI(), parameter, exception.getValue());
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER", "Request parameter has invalid type",
+                request.getRequestURI(), List.of(new FieldValidationError(parameter, message)));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
