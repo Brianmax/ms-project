@@ -4,7 +4,6 @@ services:
   postgres-product:
     image: postgres:16
     container_name: postgres-product
-    profiles: [services, all]
     environment:
       POSTGRES_DB: product_db
       POSTGRES_USER: postgres
@@ -14,7 +13,7 @@ services:
     volumes:
       - product-data:/var/lib/postgresql/data
     networks:
-      - teaching-phase1
+      - ms-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d product_db"]
       interval: 5s
@@ -24,7 +23,6 @@ services:
   postgres-order:
     image: postgres:16
     container_name: postgres-order
-    profiles: [services, all]
     environment:
       POSTGRES_DB: order_db
       POSTGRES_USER: postgres
@@ -34,7 +32,7 @@ services:
     volumes:
       - order-data:/var/lib/postgresql/data
     networks:
-      - teaching-phase1
+      - ms-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d order_db"]
       interval: 5s
@@ -46,7 +44,6 @@ services:
     build:
       context: ./product-service
     container_name: product-service
-    profiles: [services, all]
     ports:
       - "8081:8081"
     environment:
@@ -57,13 +54,12 @@ services:
       postgres-product:
         condition: service_healthy
     networks:
-      - teaching-phase1
+      - ms-network
 
   order-service:
     build:
       context: ./order-service
     container_name: order-service
-    profiles: [services, all]
     ports:
       - "8082:8082"
     environment:
@@ -77,43 +73,12 @@ services:
       product-service:
         condition: service_started
     networks:
-      - teaching-phase1
-
-  # ── Infrastructure ───────────────────────────────────────────
-  eureka-server:
-    build:
-      context: ./eureka-server
-    container_name: eureka-server
-    profiles: [all]
-    ports:
-      - "8761:8761"
-    networks:
-      - teaching-phase1
-
-  config-server:
-    build:
-      context: ./config-server
-    container_name: config-server
-    profiles: [all]
-    ports:
-      - "8888:8888"
-    networks:
-      - teaching-phase1
-
-  api-gateway:
-    build:
-      context: ./api-gateway
-    container_name: api-gateway
-    profiles: [all]
-    ports:
-      - "8080:8080"
-    networks:
-      - teaching-phase1
+      - ms-network
 
 volumes:
   product-data:
   order-data:
 
 networks:
-  teaching-phase1:
+  ms-network:
     driver: bridge
