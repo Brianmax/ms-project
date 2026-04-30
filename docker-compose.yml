@@ -40,6 +40,19 @@ services:
       retries: 10
 
   # ── Application Services ─────────────────────────────────────
+  config-server:
+    build:
+      context: ./config-server
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo
+    volumes:
+      - ms-config-repo:/config-repo
+    networks:
+      - ms-network
+
   product-service:
     build:
       context: ./product-service
@@ -50,9 +63,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-product:5432/product_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
     depends_on:
       postgres-product:
         condition: service_healthy
+      eureka-server:
+        condition: service_started
+      config-server:
+        condition: service_started
     networks:
       - ms-network
 
@@ -67,17 +85,34 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       CLIENTS_PRODUCT_SERVICE_URL: http://product-service:8081
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
     depends_on:
       postgres-order:
         condition: service_healthy
       product-service:
         condition: service_started
+      eureka-server:
+        condition: service_started
+      config-server:
+        condition: service_started
     networks:
       - ms-network
+  
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - ms-network
+
 
 volumes:
   product-data:
   order-data:
+  ms-config-repo:
+    external: true
 
 networks:
   ms-network:
