@@ -1,5 +1,4 @@
 services:
-
   # ── Databases ────────────────────────────────────────────────
   postgres-product:
     image: postgres:16
@@ -97,7 +96,7 @@ services:
         condition: service_started
     networks:
       - ms-network
-  
+
   eureka-server:
     build:
       context: ./eureka-server
@@ -106,7 +105,6 @@ services:
       - "8761:8761"
     networks:
       - ms-network
-
 
 volumes:
   product-data:
