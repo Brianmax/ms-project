@@ -30,9 +30,6 @@ public class ProductCatalogGateway {
             ProductCatalogResponse response = productCatalogClient.getProductById(productId);
             log.info("event=product_lookup_succeeded productId={}", productId);
             return response;
-        } catch (FeignException.NotFound exception) {
-            log.warn("event=product_lookup_not_found productId={}", productId);
-            throw new ProductNotFoundException(productId);
         } catch (FeignException exception) {
             log.error("event=product_lookup_failed productId={} reason={}", productId, exception.getMessage());
                 throw new ProductUnavailableException("product-service is currently unavailable");
@@ -46,16 +43,12 @@ public class ProductCatalogGateway {
 
     // se usa para traer la informacion mas reciente del producto
     // y devolverlo en la informacion de la orden
-    @CircuitBreaker(name = "product-service", fallbackMethod = "fetchProductSnapshotFallbac")
+    @CircuitBreaker(name = "product-service", fallbackMethod = "fetchProductSnapshotFallback")
     public ProductSnapshot fetchProductOrFallback(Long productId, ProductSnapshot fallback) {
-        try {
-            ProductCatalogResponse response = productCatalogClient.getProductById(productId);
-            log.info("event=product_lookup_live productId={}", productId);
-            return new ProductSnapshot(response.id(), response.name(), response.sku(), response.price(), ProductSource.LIVE);
-        } catch (FeignException exception) {
-            log.warn("event=product_lookup_fallback productId={} reason={}", productId, exception.getMessage());
-            return new ProductSnapshot(fallback.id(), fallback.name(), fallback.sku(), fallback.unitPrice(), ProductSource.FALLBACK);
-        }
+
+        ProductCatalogResponse response = productCatalogClient.getProductById(productId);
+        log.info("event=product_lookup_live productId={}", productId);
+        return new ProductSnapshot(response.id(), response.name(), response.sku(), response.price(), ProductSource.LIVE);
     }
 
     private ProductSnapshot fetchProductSnapshotFallback(Long productId, ProductSnapshot fallback, Throwable t) {
